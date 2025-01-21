@@ -1,1 +1,1 @@
-# atlas-0x0F-unity-location-based
+# Unity Location-Based AR using Niantic Lightship
