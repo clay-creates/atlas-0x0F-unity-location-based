@@ -16,18 +16,15 @@ public class GPSTracker : MonoBehaviour
     public TMP_Text latitudeText;
     public TMP_Text altitudeText;
 
-    private float updateInterval = 1f;
-    private float timer = 0f;
-
     public Button saveCoordButton;
     public Button requestCoordButton;
     public Button calculateDistanceButton;
 
-    private string currentCoordinates = "";
-    private string requestedCoordinates = "";
+    private Vector2 currentCoordinates = Vector2.zero;
+    private Vector2 savedCoordinates = Vector2.zero;
     private string distanceBetweenCoords = "";
 
-    public TMP_Text requestedCoordinatesText;
+    public TMP_Text currentCoordinatesText;
     public TMP_Text savedCoordinatesText;
     public TMP_Text distanceBetweenCoordsText;
 
@@ -78,18 +75,12 @@ public class GPSTracker : MonoBehaviour
     {
         if (Input.location.status == LocationServiceStatus.Running)
         {
-            timer += Time.deltaTime;
+            LocationInfo locationInfo = Input.location.lastData;
+            currentLongitude = locationInfo.longitude;
+            currentLatitude = locationInfo.latitude;
+            currentAltitude = locationInfo.altitude;
 
-            if (timer >= updateInterval)
-            {
-                LocationInfo locationInfo = Input.location.lastData;
-                currentLongitude = locationInfo.longitude;
-                currentLatitude = locationInfo.latitude;
-                currentAltitude = locationInfo.altitude;
-
-                UpdateGPSText();
-                timer = 0f;
-            }
+            UpdateGPSText();
         }
         else
         {
@@ -106,16 +97,56 @@ public class GPSTracker : MonoBehaviour
 
     public void SaveCurrentCoords()
     {
-
+        savedCoordinates = new Vector2((float)currentLatitude, (float)currentLongitude);
+        string formattedSavedCoords = FormatCoordinates(savedCoordinates.x, savedCoordinates.y);
+        savedCoordinatesText.text = $"{formattedSavedCoords}";
+        Debug.Log($"Coordinates saved: {formattedSavedCoords}");
     }
 
     public void RequestNewCoords()
     {
-
+        string formattedCurrentCoords = FormatCoordinates(currentLatitude, currentLongitude);
+        currentCoordinatesText.text = $"{formattedCurrentCoords}";
+        Debug.Log($"Requested Coordinates: {formattedCurrentCoords}");
     }
 
     public void CalculateDistanceBetweenCoords()
     {
+        if (savedCoordinates == Vector2.zero)
+        {
+            Debug.Log("No saved coordinates to calculate distance");
+            return;
+        }
 
+        Vector2 currentCoords = new Vector2((float)currentLatitude, (float)currentLongitude);
+        float distance = CalculateHaversineDistance(savedCoordinates, currentCoords);
+
+        distanceBetweenCoords = $"{distance:F2} meters";
+        distanceBetweenCoordsText.text = $"{distanceBetweenCoords}";
+        Debug.Log($"Distance between coordinates: {distanceBetweenCoords}");
+    }
+
+    private string FormatCoordinates(double latitude, double longitude)
+    {
+        string latDirection = latitude >= 0 ? "N" : "S";
+        string lonDirection = longitude >= 0 ? "E" : "W";
+
+        return $"{Mathf.Abs((float)latitude):F4}° {latDirection}, {Mathf.Abs((float)longitude):F4}° {lonDirection}";
+    }
+
+    private float CalculateHaversineDistance(Vector2 coord1, Vector2 coord2)
+    {
+        float R = 6371000;
+        float lat1Rad = Mathf.Deg2Rad * coord1.x;
+        float lat2Rad = Mathf.Deg2Rad * coord2.x;
+        float deltaLat = Mathf.Deg2Rad * (coord2.x - coord1.x);
+        float deltaLon = Mathf.Deg2Rad * (coord2.y - coord1.y);
+
+        float a = Mathf.Sin(deltaLat / 2) * Mathf.Sin(deltaLat / 2) +
+            Mathf.Cos(lat1Rad) * Mathf.Cos(lat2Rad) *
+            Mathf.Sin(deltaLon / 2) * Mathf.Sin(deltaLon / 2);
+
+        float c = 2 * Mathf.Atan2(Mathf.Sqrt(a), Mathf.Sqrt(1 - a));
+        return R * c;
     }
 }

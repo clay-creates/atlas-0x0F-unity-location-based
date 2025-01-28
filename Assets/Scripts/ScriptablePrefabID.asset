@@ -13,4 +13,4 @@ MonoBehaviour:
   m_Name: ScriptablePrefabID
   m_EditorClassIdentifier: 
   persistentObjects:
-  - {fileID: 5474475134756122195, guid: ab01605b58c4c004cba71b6c402eb673, type: 3}
+  - {fileID: 2124915446136340956, guid: 25ba80874e73d6149bbd6b53d3fa4f28, type: 3}
