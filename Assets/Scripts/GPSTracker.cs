@@ -23,10 +23,12 @@ public class GPSTracker : MonoBehaviour
     private Vector2 currentCoordinates = Vector2.zero;
     private Vector2 savedCoordinates = Vector2.zero;
     private string distanceBetweenCoords = "";
+    private string unityLocalPosition = "";
 
     public TMP_Text currentCoordinatesText;
     public TMP_Text savedCoordinatesText;
     public TMP_Text distanceBetweenCoordsText;
+    public TMP_Text unityLocalPositionText;
 
     // Start is called before the first frame update
     void Start()
@@ -101,6 +103,8 @@ public class GPSTracker : MonoBehaviour
         string formattedSavedCoords = FormatCoordinates(savedCoordinates.x, savedCoordinates.y);
         savedCoordinatesText.text = $"{formattedSavedCoords}";
         Debug.Log($"Coordinates saved: {formattedSavedCoords}");
+
+        GPSEncoder.SetLocalOrigin(savedCoordinates);
     }
 
     public void RequestNewCoords()
@@ -108,6 +112,8 @@ public class GPSTracker : MonoBehaviour
         string formattedCurrentCoords = FormatCoordinates(currentLatitude, currentLongitude);
         currentCoordinatesText.text = $"{formattedCurrentCoords}";
         Debug.Log($"Requested Coordinates: {formattedCurrentCoords}");
+
+        TransformGPSToULP();
     }
 
     public void CalculateDistanceBetweenCoords()
@@ -115,6 +121,7 @@ public class GPSTracker : MonoBehaviour
         if (savedCoordinates == Vector2.zero)
         {
             Debug.Log("No saved coordinates to calculate distance");
+            distanceBetweenCoordsText.text = "No saved location.";
             return;
         }
 
@@ -148,5 +155,21 @@ public class GPSTracker : MonoBehaviour
 
         float c = 2 * Mathf.Atan2(Mathf.Sqrt(a), Mathf.Sqrt(1 - a));
         return R * c;
+    }
+
+    public void TransformGPSToULP()
+    {
+        if (savedCoordinates == Vector2.zero)
+        {
+            Debug.Log("Local origin not set. Please save coordinates first.");
+            unityLocalPositionText.text = "No saved location.";
+            return;
+        }
+
+        Vector2 gps = new Vector2((float)currentLongitude, (float)currentLatitude);
+        Vector3 ucsPosition = GPSEncoder.GPSToUCS(gps);
+        unityLocalPositionText.text = $"X: {ucsPosition.x:F2}, Y: {ucsPosition.y:F2}, Z: {ucsPosition.z:F2}";
+
+        Debug.Log($"Unity Local Position: {ucsPosition}");
     }
 }
