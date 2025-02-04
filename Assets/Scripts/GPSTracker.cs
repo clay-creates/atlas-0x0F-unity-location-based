@@ -4,7 +4,7 @@ using UnityEngine;
 using TMPro;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
-using UnityEngine.Events;
+using UnityEngine.XR.ARFoundation;
 
 public class GPSTracker : MonoBehaviour
 {
@@ -15,29 +15,35 @@ public class GPSTracker : MonoBehaviour
     public TMP_Text longitudeText;
     public TMP_Text latitudeText;
     public TMP_Text altitudeText;
-
-    public Button saveCoordButton;
-    public Button requestCoordButton;
-    public Button calculateDistanceButton;
-
-    private Vector2 currentCoordinates = Vector2.zero;
-    private Vector2 savedCoordinates = Vector2.zero;
-    private string distanceBetweenCoords = "";
-    private string unityLocalPosition = "";
-
     public TMP_Text currentCoordinatesText;
     public TMP_Text savedCoordinatesText;
     public TMP_Text distanceBetweenCoordsText;
     public TMP_Text unityLocalPositionText;
 
+    public Button saveCoordButton;
+    public Button requestCoordButton;
+    public Button calculateDistanceButton;
+    public Button drawMarkersButton;
+
+    private Vector2 gpsCoordinates = Vector2.zero;
+    private Vector2 savedCoordinates = Vector2.zero;
+    private Vector2 currentCoordinates = Vector2.zero;
+    private string distanceBetweenCoords = "";
+
+    private VPSLocalization _vpsLocalization;
+
+    public GameObject markerPrefab;
+    public Transform markerParent;
+
     // Start is called before the first frame update
     void Start()
     {
-        StartCoroutine(InitializeLocationService());
-
         saveCoordButton.onClick.AddListener(SaveCurrentCoords);
         requestCoordButton.onClick.AddListener(RequestNewCoords);
         calculateDistanceButton.onClick.AddListener(CalculateDistanceBetweenCoords);
+        drawMarkersButton.onClick.AddListener(InstantiateMarkers);
+
+        StartCoroutine(InitializeLocationService());
     }
 
     private IEnumerator InitializeLocationService()
@@ -73,7 +79,7 @@ public class GPSTracker : MonoBehaviour
     }
 
     // Update is called once per frame
-    void Update()
+    private void Update()
     {
         if (Input.location.status == LocationServiceStatus.Running)
         {
@@ -109,6 +115,7 @@ public class GPSTracker : MonoBehaviour
 
     public void RequestNewCoords()
     {
+        currentCoordinates = new Vector2((float)currentLatitude, (float)currentLongitude);
         string formattedCurrentCoords = FormatCoordinates(currentLatitude, currentLongitude);
         currentCoordinatesText.text = $"{formattedCurrentCoords}";
         Debug.Log($"Requested Coordinates: {formattedCurrentCoords}");
@@ -171,5 +178,30 @@ public class GPSTracker : MonoBehaviour
         unityLocalPositionText.text = $"X: {ucsPosition.x:F2}, Y: {ucsPosition.y:F2}, Z: {ucsPosition.z:F2}";
 
         Debug.Log($"Unity Local Position: {ucsPosition}");
+    }
+
+    public void InstantiateMarkers()
+    {
+        if (savedCoordinates == Vector2.zero)
+        {
+            Debug.LogError("No saved coordinates to instantiate.");
+            return;
+        }
+
+        if (markerPrefab == null)
+        {
+            Debug.LogError("Marker prefab not assigned.");
+            return;
+        }
+
+        Vector3 savedMarkerPosition = GPSEncoder.GPSToUCS(savedCoordinates);
+        GameObject savedMarker = Instantiate(markerPrefab, savedMarkerPosition, Quaternion.identity, markerParent);
+        savedMarker.transform.localScale = Vector3.one * 0.1f;
+
+        Vector3 currentMarkerPosition = GPSEncoder.GPSToUCS(currentCoordinates);
+        GameObject currentMarker = Instantiate(markerPrefab, currentMarkerPosition, Quaternion.identity, markerParent);
+        currentMarker.transform.localScale = Vector3.one * 0.1f;
+
+        Debug.Log($"Markers instantiated at saved: {savedMarkerPosition}, current: {currentMarker}");
     }
 }

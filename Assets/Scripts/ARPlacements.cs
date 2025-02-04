@@ -7,83 +7,95 @@ using UnityEngine.XR.ARSubsystems;
 
 public class ARPlacements : MonoBehaviour
 {
-    
     private ARRaycastManager arRaycastManager;
-    [SerializeField] private GameObject instantiatedObject;
+    private ARAnchorManager arAnchorManager;
+    [SerializeField] private GameObject markerPrefab;
     private List<GameObject> instantiatedObjects = new();
     private Camera mainCam;
 
+    private static List<ARRaycastHit> hits = new();
+    private const float prefabScale = 0.1f; // Adjust as needed
 
-    // Start is called before the first frame update
-    private void Start()
+    void Start()
     {
-        mainCam = FindObjectOfType<Camera>();
+        mainCam = Camera.main;
         arRaycastManager = FindObjectOfType<ARRaycastManager>();
+        arAnchorManager = FindObjectOfType<ARAnchorManager>();
+
+        if (!arRaycastManager)
+        {
+            Debug.LogError("ARRaycastManager not found in scene.");
+            enabled = false;
+        }
+
+        if (!arAnchorManager)
+        {
+            Debug.LogError("ARAnchorManager not found in scene.");
+            enabled = false;
+        }
     }
 
-    // Update is called once per frame
     void Update()
     {
 #if UNITY_EDITOR
-        if (Input.GetMouseButtonDown(0))
+        if (Input.GetMouseButtonDown(0) && !IsPointerOverUI(Input.mousePosition))
         {
-            if (EventSystem.current.IsPointerOverGameObject())
-            {
-                Debug.Log("UI Hit was recognized");
-                return;
-            }
-            TouchToRay(Input.mousePosition);
+            TryPlaceObject(Input.mousePosition);
         }
 #endif
-#if UNITY_IOS || UNITY_ANDROID
 
-        if (Input.touchCount > 0 && Input.touchCount < 2 &&
-            Input.GetTouch(0).phase == TouchPhase.Began)
+#if UNITY_IOS || UNITY_ANDROID
+        if (Input.touchCount == 1 && Input.GetTouch(0).phase == TouchPhase.Began)
         {
             Touch touch = Input.GetTouch(0);
-
-            PointerEventData pointerData = new PointerEventData(EventSystem.current);
-            pointerData.position = touch.position;
-
-            List<RaycastResult> results = new List<RaycastResult>();
-
-            EventSystem.current.RaycastAll(pointerData, results);
-
-            if (results.Count > 0)
+            if (!IsPointerOverUI(touch.position))
             {
-                // We hit a UI element
-                Debug.Log("We hit an UI Element");
-                return;
+                TryPlaceObject(touch.position);
             }
-
-            Debug.Log("Touch detected, fingerId: " + touch.fingerId);
-
-            if (EventSystem.current.IsPointerOverGameObject(touch.fingerId))
-            {
-                Debug.Log("Is Pointer Over GOJ, No placement ");
-                return;
-            }
-            TouchToRay(touch.position);
         }
 #endif
     }
 
-    void TouchToRay(Vector3 touch)
+    private bool IsPointerOverUI(Vector2 position)
     {
-        Ray ray = mainCam.ScreenPointToRay(touch);
-        List<ARRaycastHit> hits = new();
+        PointerEventData eventData = new PointerEventData(EventSystem.current) { position = position };
+        List<RaycastResult> results = new List<RaycastResult>();
+        EventSystem.current.RaycastAll(eventData, results);
+        return results.Count > 0;
+    }
 
-        arRaycastManager.raycastPrefab = instantiatedObject;
-        arRaycastManager.Raycast(ray, hits, TrackableType.PlaneEstimated);
+    void TryPlaceObject(Vector3 screenPosition)
+    {
+        Ray ray = mainCam.ScreenPointToRay(screenPosition);
 
-        Debug.Log("ShootingRay");
-        //
-        if (hits.Count > 0)
+        if (arRaycastManager.Raycast(ray, hits, TrackableType.PlaneWithinPolygon))
         {
-            GameObject placeObject = Instantiate(instantiatedObject);
-            placeObject.transform.position = hits[0].pose.position;
-            placeObject.transform.rotation = hits[0].pose.rotation;
-            instantiatedObjects.Add(placeObject);
+            Pose placementPose = hits[0].pose;
+
+            // Create an empty GameObject at the placement pose
+            GameObject anchorObject = new GameObject("AR Anchor");
+            anchorObject.transform.SetPositionAndRotation(placementPose.position, placementPose.rotation);
+
+            // Add an ARAnchor component to it
+            ARAnchor anchor = anchorObject.AddComponent<ARAnchor>();
+
+            if (anchor == null)
+            {
+                Debug.LogWarning("Failed to create an anchor.");
+                return;
+            }
+
+            // Instantiate the markerPrefab as a child of the anchor
+            GameObject newMarker = Instantiate(markerPrefab, anchor.transform);
+            newMarker.transform.localScale = Vector3.one * prefabScale;
+
+            instantiatedObjects.Add(newMarker);
+
+            Debug.Log($"Marker placed at {placementPose.position} with ARAnchor.");
+        }
+        else
+        {
+            Debug.Log("No suitable plane detected for placement.");
         }
     }
 }
