@@ -102,6 +102,10 @@ I believe that **AR and geolocation technologies** **complement each other well*
 
 ---
 
+### ** Download the current build [here](https://drive.google.com/file/d/1b8DYVGv22zKzD4wcxEfH9wB3vMmtnTtd/view?usp=sharing) 
+
+---
+
 ## **📌 Installation & Setup**
 ### **🔧 Prerequisites**
 - **Unity 2022.3.7f1** (or later)
