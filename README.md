@@ -112,4 +112,4 @@ I believe that **AR and geolocation technologies** **complement each other well*
 
 ### **📥 Clone the Repository**
 ```sh
-git clone https://github.com/YOUR_GITHUB_USERNAME/atlas-0x0F-unity-location-based.git
+git clone https://github.com/YOUR_GITHUB_USERNAME/clay-creates/atlas-0x0F-unity-location-based.git
